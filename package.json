@@ -1,0 +1,27 @@
+{
+  "name": "supermemory-local-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"node --watch server.mjs\"",
+    "build": "tsc --noEmit && vite build",
+    "start": "node server.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supermemory/memory-graph": "latest",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  },
+  "packageManager": "pnpm@10.12.4"
+}
