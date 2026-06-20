@@ -82,16 +82,6 @@ async function api(req,res,url) {
       return json(res,200,{ documents:sampleDocuments, pagination:{currentPage:1,totalPages:1,totalItems:sampleDocuments.length,limit:500}, demo:true });
     } catch(error) { return json(res,502,{error:error.message}); }
   }
-  if (url.pathname==='/api/search') {
-    const payload=await body(req);
-    try {
-      const data=await proxy('/v4/search',{ searchMode:'hybrid', limit:10, threshold:0.35, ...payload });
-      if (data) return json(res,200,data);
-      const q=String(payload.q||'').toLowerCase();
-      const results=sampleDocuments.flatMap(d=>d.memories.map(m=>({id:m.id,memory:m.memory,similarity:(m.memory.toLowerCase().includes(q)?0.96:0.72),updatedAt:d.updatedAt,metadata:{documentTitle:d.title,containerTags:d.containerTags}}))).filter(r=>!q||r.memory.toLowerCase().split(' ').some(w=>q.includes(w))).slice(0,10);
-      return json(res,200,{results,total:results.length,timing:12,demo:true});
-    } catch(error) { return json(res,502,{error:error.message}); }
-  }
   return json(res,404,{error:'Not found'});
 }
 

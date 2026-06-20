@@ -1,6 +1,6 @@
 # Memory Observatory
 
-A deliberately small, read-only UI for a self-hosted Supermemory instance. The graph is the default view; container tags and semantic search are one click away in the bottom dock.
+A deliberately small, read-only UI for a self-hosted Supermemory instance. The graph is the default view; container tags and a document browser are one click away in the bottom dock.
 
 ## Run
 
@@ -21,7 +21,8 @@ For local UI development, run `pnpm dev` and open `http://localhost:5173`.
 The Node server uses only built-in modules and proxies:
 
 - `POST /v3/documents/documents` for documents with their memory entries and inferred container tags
-- `POST /v4/search` for hybrid semantic search
+
+The document browser filters the loaded documents, source content, tags, and extracted memories locally. This avoids presenting semantic search on self-hosted deployments where the search endpoints exist but do not return indexed results.
 
 Request logging is intentionally not implemented. The self-hosted API does not expose a documented console-log endpoint, and this UI does not create its own telemetry.
 

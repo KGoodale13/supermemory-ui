@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MemoryGraph } from '@supermemory/memory-graph';
-import { Boxes, BrainCircuit, CircleHelp, Command, Database, FileText, RefreshCw, Search, Sparkles, X } from 'lucide-react';
-import type { DocumentRecord, SearchResult } from './types';
+import { Boxes, BrainCircuit, CircleHelp, FileText, FolderOpen, RefreshCw, Search, Sparkles, X } from 'lucide-react';
+import type { DocumentRecord, MemoryRecord } from './types';
 
-type View='graph'|'tags'|'search';
+type View='graph'|'tags'|'browse';
 const nav=[
   {id:'graph' as View,label:'Graph',icon:BrainCircuit},
   {id:'tags' as View,label:'Tags',icon:Boxes},
-  {id:'search' as View,label:'Search',icon:Search},
+  {id:'browse' as View,label:'Browse',icon:FolderOpen},
 ];
 
 async function post<T>(url:string, data:unknown={}):Promise<T>{
@@ -69,7 +69,7 @@ export default function App(){
         </div>
       </section>}
       {view==='tags'&&<TagsView tags={tags} documents={documents} onOpen={(tag)=>{setSelectedTag(tag);setView('graph')}}/>}
-      {view==='search'&&<SearchView tags={tags.map(t=>t.name)}/>}
+      {view==='browse'&&<BrowseView documents={documents} tags={tags.map(t=>t.name)}/>}
     </main>
 
     <nav className="dock" aria-label="Primary navigation">
@@ -90,15 +90,32 @@ function TagsView({tags,documents,onOpen}:{tags:{name:string;count:number;update
   </section>
 }
 
-function SearchView({tags}:{tags:string[]}){
-  const [q,setQ]=useState(''); const [tag,setTag]=useState(''); const [results,setResults]=useState<SearchResult[]>([]); const [timing,setTiming]=useState<number|null>(null); const [busy,setBusy]=useState(false); const [searched,setSearched]=useState(false);
-  const run=async(e:React.FormEvent)=>{e.preventDefault();if(!q.trim())return;setBusy(true);setSearched(true);try{const data=await post<{results:SearchResult[];timing?:number}>('/api/search',{q:q.trim(),...(tag?{containerTag:tag}:{})});setResults(data.results||[]);setTiming(data.timing??null)}finally{setBusy(false)}};
-  return <section className="page search-page"><PageHeading eyebrow="Recall" title="Search your knowledge" description="Use natural language to retrieve memories and source material."/>
-    <form className="search-box" onSubmit={run}><Search size={22}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="What do I know about…" autoFocus/><select value={tag} onChange={e=>setTag(e.target.value)} aria-label="Container tag"><option value="">Every space</option>{tags.map(t=><option key={t}>{t}</option>)}</select><button disabled={busy||!q.trim()}>{busy?'Searching…':'Search'}<Command size={14}/></button></form>
-    {searched&&<div className="result-summary"><span>{results.length} result{results.length!==1?'s':''}</span>{timing!==null&&<span>{Math.round(timing)} ms</span>}</div>}
-    <div className="results">{results.map((result,i)=><article className="result-card" key={result.id||i}><div className="score">{Math.round((result.similarity||0)*100)}%</div><div><div className="result-kind"><Database size={13}/>{result.memory?'Memory':'Document'}</div><p>{result.memory||result.chunk}</p>{Boolean(result.metadata?.documentTitle)&&<span className="source">{String(result.metadata?.documentTitle)}</span>}</div></article>)}</div>
-    {!searched&&<div className="search-prompts"><span>Try asking</span>{['What changed recently?','How is audio configured?','What caused the latency?'].map(x=><button key={x} onClick={()=>setQ(x)}>{x}</button>)}</div>}
-    {searched&&!busy&&!results.length&&<Empty icon={Search} title="No close matches" copy="Try a broader question or search every space."/>}
+function BrowseView({documents,tags}:{documents:DocumentRecord[];tags:string[]}){
+  const [q,setQ]=useState('');
+  const [tag,setTag]=useState('');
+  const [selectedId,setSelectedId]=useState<string|null>(documents[0]?.id||null);
+  const matches=useMemo(()=>{
+    const needle=q.trim().toLowerCase();
+    return documents.filter(document=>{
+      if(tag&&!document.containerTags?.includes(tag)) return false;
+      if(!needle) return true;
+      const memories=(document.memories||[]) as MemoryRecord[];
+      const haystack=[document.title,document.summary,document.content,...(document.containerTags||[]),...memories.map(memory=>memory.memory)].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(needle);
+    });
+  },[documents,q,tag]);
+  useEffect(()=>{
+    if(!matches.some(document=>document.id===selectedId)) setSelectedId(matches[0]?.id||null);
+  },[matches,selectedId]);
+  const selected=matches.find(document=>document.id===selectedId)||null;
+  const selectedMemories=(selected?.memories||[]) as MemoryRecord[];
+
+  return <section className="page browse-page"><PageHeading eyebrow="Library" title="Browse documents" description="Filter source material and inspect the memories extracted from each document."/>
+    <div className="browse-toolbar"><div className="browse-search"><Search size={18}/><input value={q} onChange={event=>setQ(event.target.value)} placeholder="Filter titles, content, or memories…" autoFocus/></div><select value={tag} onChange={event=>setTag(event.target.value)} aria-label="Container tag"><option value="">Every space</option>{tags.map(value=><option key={value}>{value}</option>)}</select></div>
+    <div className="browse-layout">
+      <div className="document-list"><div className="document-count">{matches.length} document{matches.length!==1?'s':''}</div>{matches.map(document=><button key={document.id} className={`document-row ${selectedId===document.id?'selected':''}`} onClick={()=>setSelectedId(document.id)}><span className="document-icon"><FileText size={16}/></span><span className="document-row-copy"><strong>{document.title||'Untitled document'}</strong><small>{document.summary||document.documentType||'No summary available'}</small><span>{(document.memories||[]).length} memories · {document.updatedAt?new Date(document.updatedAt).toLocaleDateString():'Unknown date'}</span></span></button>)}{!matches.length&&<Empty icon={Search} title="No matching documents" copy="Try a shorter term or search every space."/>}</div>
+      <article className="document-detail">{selected?<><div className="document-detail-head"><span className="document-type">{selected.documentType||selected.type||'document'}</span><h2>{selected.title||'Untitled document'}</h2><p>{selected.summary||'No summary is available for this document.'}</p><div className="detail-tags">{selected.containerTags?.map(value=><span key={value}>{value}</span>)}</div></div>{selected.content&&<section className="source-content"><h3>Source content</h3><p>{selected.content}</p></section>}<section className="memory-list"><h3>Extracted memories <span>{selectedMemories.length}</span></h3>{selectedMemories.map(memory=><div className="memory-item" key={memory.id}><Sparkles size={14}/><p>{memory.memory}</p></div>)}{!selectedMemories.length&&<p className="no-memories">No memories were extracted from this document.</p>}</section></>:<Empty icon={FolderOpen} title="Select a document" copy="Choose a document to inspect its source and memories."/>}</article>
+    </div>
   </section>
 }
 
