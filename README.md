@@ -20,7 +20,7 @@ For local UI development, run `pnpm dev` and open `http://localhost:5173`.
 
 The Node server uses only built-in modules and proxies:
 
-- `POST /v3/documents/list` for graph data and inferred container tags
+- `POST /v3/documents/documents` for documents with their memory entries and inferred container tags
 - `POST /v4/search` for hybrid semantic search
 
 Request logging is intentionally not implemented. The self-hosted API does not expose a documented console-log endpoint, and this UI does not create its own telemetry.

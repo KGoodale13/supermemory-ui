@@ -26,7 +26,15 @@ export default function App(){
 
   const load=useCallback(async()=>{
     setLoading(true); setError(null);
-    try { const data=await post<{memories?:DocumentRecord[];documents?:DocumentRecord[];demo?:boolean}>('/api/documents'); setDocuments(data.memories||data.documents||[]); setDemo(Boolean(data.demo)); }
+    try {
+      const data=await post<{memories?:DocumentRecord[];documents?:DocumentRecord[];demo?:boolean}>('/api/documents');
+      const source=Array.isArray(data.documents)?data.documents:Array.isArray(data.memories)?data.memories:[];
+      setDocuments(source.filter(document=>document&&typeof document.id==='string').map(document=>({
+        ...document,
+        memories:Array.isArray(document.memories)?document.memories:[],
+      })));
+      setDemo(Boolean(data.demo));
+    }
     catch(e){ setError(e instanceof Error?e:new Error('Unable to load memories')); }
     finally{ setLoading(false); }
   },[]);

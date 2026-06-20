@@ -47,13 +47,39 @@ async function proxy(path, payload) {
   }
 }
 
+function normalizeDocuments(data) {
+  const source = Array.isArray(data?.documents)
+    ? data.documents
+    : Array.isArray(data?.memories)
+      ? data.memories
+      : [];
+
+  return source
+    .filter((document) => document && typeof document.id === 'string')
+    .map((document) => ({
+      ...document,
+      title: document.title ?? null,
+      url: document.url ?? null,
+      summary: document.summary ?? null,
+      documentType: document.documentType ?? document.type ?? 'text',
+      createdAt: document.createdAt ?? new Date(0).toISOString(),
+      updatedAt: document.updatedAt ?? document.createdAt ?? new Date(0).toISOString(),
+      memories: Array.isArray(document.memories)
+        ? document.memories
+        : Array.isArray(document.memoryEntries)
+          ? document.memoryEntries
+          : [],
+    }));
+}
+
 async function api(req,res,url) {
   if (url.pathname==='/api/health') return json(res,200,{ ok:true, upstream });
   if (url.pathname==='/api/documents') {
     const payload=await body(req);
     try {
-      const data=await proxy('/v3/documents/list',{ page:1, limit:500, sort:'createdAt', order:'desc', ...payload });
-      return json(res,200,data || { memories:sampleDocuments, pagination:{currentPage:1,totalPages:1,totalItems:sampleDocuments.length,limit:500}, demo:true });
+      const data=await proxy('/v3/documents/documents',{ page:1, limit:500, sort:'createdAt', order:'desc', ...payload });
+      if (data) return json(res,200,{ documents:normalizeDocuments(data), pagination:data.pagination });
+      return json(res,200,{ documents:sampleDocuments, pagination:{currentPage:1,totalPages:1,totalItems:sampleDocuments.length,limit:500}, demo:true });
     } catch(error) { return json(res,502,{error:error.message}); }
   }
   if (url.pathname==='/api/search') {
